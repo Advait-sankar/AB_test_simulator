@@ -1,101 +1,139 @@
 import numpy as np
-import plotly.graph_objs as go
-import streamlit as st
-from src.utils import empirical_cdf
+import scipy.stats as stats
+from src.utils import get_ctrs_hat
 
 
-def plot_ctr(results: dict[str, np.ndarray], i: int) -> None:
-    ctrs_0 = results['ctrs_0'][i]
-    ctrs_1 = results['ctrs_1'][i]
+def t_test_clicks(results: dict[str, np.ndarray]) -> np.ndarray:
+    """
+    Perform two-sample T-test for clicks data in A/B test results.
 
-    fig = go.Figure()
-    fig.add_trace(go.Histogram(x=ctrs_0, name='Group A - CTR', opacity=0.6))
-    fig.add_trace(go.Histogram(x=ctrs_1, name='Group B - CTR', opacity=0.6))
+    Args:
+        results (dict[str, np.ndarray]): A dictionary containing
+            A/B test results.
 
-    fig.update_layout(
-        barmode='overlay',
-        title='Ground Truth CTR Distribution (H0 vs H1)',
-        xaxis_title='CTR',
-        yaxis_title='Probability',
-        template='plotly_white'
+    Returns:
+        np.ndarray: An array containing the p-values of T-test
+            for each experiment.
+    """
+    a = results['clicks_0']
+    b = results['clicks_1']
+    n_runs = a.shape[0]
+    result = np.zeros(n_runs)
+    for i in range(n_runs):
+        result[i] = stats.ttest_ind(a[i], b[i], alternative='two-sided').pvalue
+    return result
+
+
+def t_test_ctr(results: dict[str, np.ndarray]) -> np.ndarray:
+    """
+    Perform two-sample T-test for CTR data in A/B test results.
+
+    Args:
+        results (dict[str, np.ndarray]): A dictionary containing
+            A/B test results.
+
+    Returns:
+        np.ndarray: An array containing the p-values of T-test
+            for each experiment.
+    """
+    ctrs_hat = get_ctrs_hat(results)
+    a = ctrs_hat['ctrs_0_hat']
+    b = ctrs_hat['ctrs_1_hat']
+    n_runs = a.shape[0]
+    result = np.zeros(n_runs)
+    for i in range(n_runs):
+        result[i] = stats.ttest_ind(a[i], b[i], alternative='two-sided').pvalue
+    return result
+
+
+def mw_test(results: dict[str, np.ndarray]) -> np.ndarray:
+    """
+    Perform Mann-Whitney U test for clicks data in A/B test results.
+
+    Args:
+        results (dict[str, np.ndarray]): A dictionary containing
+            A/B test results.
+
+    Returns:
+        np.ndarray: An array containing the p-values of Mann-Whitney U test
+            for each experiment.
+    """
+    a = results['clicks_0']
+    b = results['clicks_1']
+    n_runs = a.shape[0]
+    result = np.zeros(n_runs)
+    for i in range(n_runs):
+        result[i] = stats.mannwhitneyu(
+            a[i],
+            b[i],
+            alternative='two-sided'
+        ).pvalue
+    return result
+
+
+def binom_test(results: dict[str, np.ndarray]) -> np.ndarray:
+    """
+    Perform binomial test for A/B test results.
+
+    Args:
+        results (dict[str, np.ndarray]): A dictionary containing
+            A/B test results.
+
+    Returns:
+        np.ndarray: An array containing the p-values of binomial test
+            for each experiment.
+    """
+    clicks_0 = results['clicks_0'].sum(axis=1)
+    clicks_1 = results['clicks_1'].sum(axis=1)
+    n_0 = results['views_0'].sum(axis=1)
+    n_1 = results['views_1'].sum(axis=1)
+    global_ctr_0 = clicks_0 / n_0
+    global_ctr_1 = clicks_1 / n_1
+
+    ctr_H0 = (clicks_0 + clicks_1) / (n_0 + n_1)
+    se = np.sqrt(ctr_H0 * (1 - ctr_H0) * (1/n_0 + 1/n_1))
+    z_stat = (global_ctr_0 - global_ctr_1) / se
+    result = 2 * np.minimum(
+        stats.norm(0, 1).cdf(z_stat),
+        1 - stats.norm(0, 1).cdf(z_stat)
     )
-    st.plotly_chart(fig, use_container_width=True)
+    return result
 
 
-def plot_views(results: dict[str, np.ndarray], i: int) -> None:
-    views_0 = results['views_0'][i]
-    views_1 = results['views_1'][i]
+def bootstrap_test(results: dict[str, np.ndarray],
+                   n_bootstrap: int = 1000) -> np.ndarray:
+    """
+    Perform bootstrap test for A/B test results.
 
-    fig = go.Figure()
-    fig.add_trace(go.Histogram(x=views_0, name='Group A - Views', opacity=0.6))
-    fig.add_trace(go.Histogram(x=views_1, name='Group B - Views', opacity=0.6))
+    Args:
+        results (dict[str, np.ndarray]): A dictionary containing
+            A/B test results.
+        n_bootstrap (int): Number of bootstrap samples. Defaults to 2000.
 
-    fig.update_layout(
-        barmode='overlay',
-        title='Ground Truth Views Distribution (H0 vs H1)',
-        xaxis_title='Views',
-        yaxis_title='Probability',
-        template='plotly_white'
-    )
-    st.plotly_chart(fig, use_container_width=True)
+    Returns:
+        np.ndarray: An array containing the p-values of bootstrap test
+            for each experiment.
+    """
+    clicks_0 = results['clicks_0']
+    clicks_1 = results['clicks_1']
+    views_0 = results['views_0']
+    views_1 = results['views_1']
+    ctrs_0_hat = clicks_0 / views_0
+    ctrs_1_hat = clicks_1 / views_1
 
+    poisson_bootstraps = stats.poisson(1).rvs(
+        (n_bootstrap, ctrs_0_hat.shape[1])
+        ).astype(int)
 
-def plot_p_hist_all(results_pvals, hist_alpha=0.6) -> None:
-    fig = go.Figure()
-    for test_name, data in results_pvals.items():
-        fig.add_trace(go.Histogram(
-            x=data['p_vals'],
-            name=test_name,
-            opacity=hist_alpha,
-            histnorm='probability'
-        ))
+    values_0 = np.matmul(ctrs_0_hat * views_0, poisson_bootstraps.T)
+    weights_0 = np.matmul(views_0, poisson_bootstraps.T)
 
-    fig.update_layout(
-        barmode='overlay',
-        title='P-Value Distributions Across Tests',
-        xaxis_title='p-value',
-        yaxis_title='Probability',
-        template='plotly_white'
-    )
-    st.plotly_chart(fig, use_container_width=True)
+    values_1 = np.matmul(ctrs_1_hat * views_1, poisson_bootstraps.T)
+    weights_1 = np.matmul(views_1, poisson_bootstraps.T)
 
+    deltas = values_1 / weights_1 - values_0 / weights_0
 
-def plot_p_cdf_all(p_vals_dict, alpha=0.05):
-    fig = go.Figure()
-    for test_name, data in p_vals_dict.items():
-        p_vals_sorted, probs = empirical_cdf(data['p_vals'])
-        fig.add_trace(go.Scatter(x=p_vals_sorted, y=probs, mode='lines', name=test_name))
+    positions = np.sum(deltas < 0, axis=1)
 
-    fig.add_shape(
-        type='line', x0=alpha, y0=0, x1=alpha, y1=1,
-        line=dict(color='gray', dash='dash')
-    )
+    return 2 * np.minimum(positions, n_bootstrap - positions) / n_bootstrap
 
-    fig.update_layout(
-        title='Empirical CDF of p-values',
-        xaxis_title='p-value',
-        yaxis_title='Probability',
-        template='plotly_white'
-    )
-    st.plotly_chart(fig, use_container_width=True)
-
-
-def plot_power(tests_results, alpha=0.05):
-    powers = {
-        test_name: np.mean(data['p_vals'] < alpha)
-        for test_name, data in tests_results.items()
-    }
-
-    fig = go.Figure(go.Bar(
-        x=list(powers.values()),
-        y=list(powers.keys()),
-        orientation='h'
-    ))
-
-    fig.update_layout(
-        title='Statistical Power of Tests',
-        xaxis_title='Power',
-        yaxis_title='Test',
-        template='plotly_white'
-    )
-    st.plotly_chart(fig, use_container_width=True)
