@@ -103,3 +103,26 @@ def plot_power(tests_results, alpha=0.05):
     fig.update_traces(textposition='auto')
     fig.update_layout(xaxis_range=[0, 1])
     st.plotly_chart(fig, use_container_width=True)
+
+def plot_ctr_plotly(results, i):
+    import plotly.express as px
+    import streamlit as st
+
+    ctr_values = {
+        'Control CTR': results['ctrs_0'][i],
+        'Treatment CTR': results['ctrs_1'][i]
+    }
+
+    fig = px.histogram(
+        x=list(ctr_values.values()),
+        labels={'x': 'CTR'},
+        nbins=20,
+        opacity=0.6
+    )
+    fig.update_layout(
+        title='CTR Distribution',
+        xaxis_title='CTR',
+        yaxis_title='Frequency',
+        barmode='overlay'
+    )
+    st.plotly_chart(fig, use_container_width=True)
