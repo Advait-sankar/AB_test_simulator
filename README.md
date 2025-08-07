@@ -1,27 +1,29 @@
-# 📊 A/B Testing Simulator
+# A/B Test Simulator 🎯
 
-An interactive Streamlit app to simulate and visualize A/B Testing using statistical methods — designed for Business Analysts and Product Managers.
+![Streamlit](https://img.shields.io/badge/Built%20With-Streamlit-red?logo=streamlit)
+![Python](https://img.shields.io/badge/Python-3.10+-blue?logo=python)
+![Plotly](https://img.shields.io/badge/Interactive-Plotly-brightgreen?logo=plotly)
+![License](https://img.shields.io/badge/License-MIT-yellow)
 
-## Features
+An interactive A/B Testing simulator built using **Streamlit** and **Plotly**, designed for data-driven business analysis and experimentation.
 
-- Experiment Design with Power Calculation
-- A/A and A/B Test Simulations
-- Multiple Statistical Tests (T-test, Mann–Whitney, Bootstrap, etc.)
-- Interactive Plotly Visualizations
-- Customizable Data Generation Settings
-- Inspired by internal dashboards used in tech companies (e.g., Meesho)
+### 🚀 Features
+- Dynamic CTR, views, and click modeling
+- Multiple statistical test comparisons
+- A/A and A/B simulation runs
+- Power and significance level visualization
+- Clean dashboard layout inspired by Meesho internal tools
 
-## Tech Stack
+### 📸 Preview
+![Screenshot](assets/screenshot.png)
 
-- Python
-- Streamlit
-- Plotly
-- NumPy / SciPy
-
-## Run Locally
-
+### 🛠️ Installation
 ```bash
-git clone <your-repo>
-cd ab-test-simulator
 pip install -r requirements.txt
 streamlit run streamlit_app.py
+```
+
+### 🧠 Use Cases
+- Business/Product Analyst Dashboards
+- Product Experiments
+- Interview Project Demonstrations
