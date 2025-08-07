@@ -1,14 +1,13 @@
 import streamlit as st
 import numpy as np
-import plotly.express as px
 from src.testdesign import design_binomial_experiment
 from src.datagen import ABTestGenerator
 from src.utils import apply_tests
 from src.tests import t_test_clicks, t_test_ctr, mw_test, binom_test, bootstrap_test
 from src.plots import (
-    plot_ctr_plotly, plot_views_plotly,
-    plot_p_hist_all_plotly, plot_p_cdf_all_plotly,
-    plot_power_plotly
+    plot_ctr, plot_views,
+    plot_p_hist_all, plot_p_cdf_all,
+    plot_power
 )
 
 # Global results
@@ -78,23 +77,23 @@ def main():
         tab1, tab2, tab3 = st.tabs(["📉 Data Distribution", "🧪 A/A Test Results", "🚀 A/B Test Results"])
         with tab1:
             st.markdown("### Control (H0) Distributions")
-            plot_ctr_plotly(result_dict_aa, 0)
-            plot_views_plotly(result_dict_aa, 0)
+            plot_ctr(result_dict_aa, 0)
+            plot_views(result_dict_aa, 0)
 
             st.markdown("### Treatment (H1) Distributions")
-            plot_ctr_plotly(result_dict_ab, 0)
-            plot_views_plotly(result_dict_ab, 0)
+            plot_ctr(result_dict_ab, 0)
+            plot_views(result_dict_ab, 0)
 
         with tab2:
             st.markdown("### p-value Distributions (H0)")
-            plot_p_hist_all_plotly(p_vals_aa)
-            plot_p_cdf_all_plotly(p_vals_aa)
+            plot_p_hist_all(p_vals_aa)
+            plot_p_cdf_all(p_vals_aa)
 
         with tab3:
             st.markdown("### p-value Distributions (H1)")
-            plot_p_hist_all_plotly(p_vals_ab)
-            plot_p_cdf_all_plotly(p_vals_ab)
-            plot_power_plotly(p_vals_ab, alpha)
+            plot_p_hist_all(p_vals_ab)
+            plot_p_cdf_all(p_vals_ab)
+            plot_power(p_vals_ab, alpha)
 
 if __name__ == "__main__":
     main()
